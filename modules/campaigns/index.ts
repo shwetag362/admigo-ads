@@ -1,10 +1,17 @@
-// modules/campaigns — public API (barrel).
-// Import this module ONLY via this file: `import { ... } from "@/modules/campaigns"`.
-// Internal layout (see ARCHITECTURE.md):
-//   campaigns.schema.ts       zod input contracts + inferred types
-//   campaigns.service.ts      business logic (no HTTP / no Prisma / no Next)
-//   campaigns.repository.ts   the only file that touches prisma for this domain
-//   campaigns.jobs.ts         (optional) enqueue background work
+// modules/campaigns — public API (barrel) + composition root.
+// Import this module ONLY via this file: `import { campaignController } from "@/modules/campaigns"`.
 //
-// TODO(Phase 2): migrate the corresponding services/ + app/api handlers here.
-export {};
+// Read path is migrated to the layered shape. Meta write paths remain in
+// services/CampaignService.js until they can be verified against a running app.
+import { prismaCampaignRepository } from "./campaign.repository.prisma";
+import { makeCampaignService } from "./campaign.service";
+import { makeCampaignController } from "./campaign.controller";
+
+export const campaignService = makeCampaignService(prismaCampaignRepository);
+export const campaignController = makeCampaignController(campaignService);
+
+export { ListCampaignsQuery } from "./campaign.schema";
+export type { CampaignRepository } from "./campaign.repository";
+export type { CampaignSummary } from "./campaign.types";
+export type { CampaignService } from "./campaign.service";
+export type { CampaignController } from "./campaign.controller";
