@@ -1,24 +1,19 @@
 // app/api/teams/route.js
-import { NextResponse } from "next/server";
+//
+// DRIVER (thin adapter). All logic lives in modules/teams:
+//   route → controller → service → repository (port) → Prisma adapter
+// See ARCHITECTURE.md. This is the template for migrating the other routes.
+import { handleRoute, json } from "@/lib/http/route";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
-import { getUserTeams, createTeam } from "../../../lib/teams";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { teamController } from "@/modules/teams";
 
-export async function GET() {
+export const GET = handleRoute(async () => {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  return json(await teamController.list(session));
+});
 
-  const memberships = await getUserTeams(session.user.id);
-  return NextResponse.json({ memberships });
-}
-
-export async function POST(req) {
+export const POST = handleRoute(async (req) => {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-  const { name, description } = await req.json();
-  if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
-
-  const team = await createTeam(session.user.id, name.trim(), description?.trim());
-  return NextResponse.json({ team }, { status: 201 });
-}
+  return json(await teamController.create(session, await req.json()), 201);
+});

@@ -1,10 +1,19 @@
-// modules/teams — public API (barrel).
-// Import this module ONLY via this file: `import { ... } from "@/modules/teams"`.
-// Internal layout (see ARCHITECTURE.md):
-//   teams.schema.ts       zod input contracts + inferred types
-//   teams.service.ts      business logic (no HTTP / no Prisma / no Next)
-//   teams.repository.ts   the only file that touches prisma for this domain
-//   teams.jobs.ts         (optional) enqueue background work
+// modules/teams — public API (barrel) + composition root.
+// Import this module ONLY via this file: `import { teamController } from "@/modules/teams"`.
 //
-// TODO(Phase 2): migrate the corresponding services/ + app/api handlers here.
-export {};
+// The composition root wires the concrete Prisma adapter into the service and
+// controller. This is the single place the domain binds to infrastructure; in
+// the future monorepo this moves to apps/web/src/server/container.ts.
+import { prismaTeamRepository } from "./team.repository.prisma";
+import { makeTeamService } from "./team.service";
+import { makeTeamController } from "./team.controller";
+
+export const teamService = makeTeamService(prismaTeamRepository);
+export const teamController = makeTeamController(teamService);
+
+// Public types + contracts
+export { CreateTeamInput } from "./team.schema";
+export type { TeamRepository } from "./team.repository";
+export type { Team, TeamMembership } from "./team.types";
+export type { TeamService } from "./team.service";
+export type { TeamController } from "./team.controller";

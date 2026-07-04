@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ZodError } from "zod";
 import { AppError, RateLimitError } from "@/lib/errors/AppError";
 import { logger } from "@/lib/observability/logger";
 
@@ -31,6 +32,14 @@ export function handleRoute(handler: RouteHandler): RouteHandler {
     try {
       return await handler(req, ctx);
     } catch (err) {
+      // zod validation failures at any boundary → 400 with field details.
+      if (err instanceof ZodError) {
+        return NextResponse.json(
+          { error: "Validation failed", code: "VALIDATION", issues: err.flatten() },
+          { status: 400 },
+        );
+      }
+
       if (err instanceof AppError) {
         if (err.status >= 500) {
           logger.error("Route error", err, { path: req.nextUrl?.pathname });
