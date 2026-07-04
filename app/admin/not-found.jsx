@@ -1,3 +1,5 @@
-export default function NotFound() {
-  return <p>Dashboard page not found.</p>;
-}
+// Re-export of the shared implementation in the dashboard tree.
+// admin and dashboard render identical UI; role routing lives in proxy.ts.
+// Single source of truth avoids the two trees drifting apart.
+export { default } from "@/app/dashboard/not-found";
+export * from "@/app/dashboard/not-found";

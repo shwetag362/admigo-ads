@@ -1,6 +1,5 @@
-'use client';
-import LeadsStepper from '../leadsStepper'; 
-
-export default function EditLeads() {
-  return <LeadsStepper />; 
-}
+// Re-export of the shared implementation in the dashboard tree.
+// admin and dashboard render identical UI; role routing lives in proxy.ts.
+// Single source of truth avoids the two trees drifting apart.
+export { default } from "@/app/dashboard/ads-manager/create-ads-manager/[objective]/Leads/[id]/page";
+export * from "@/app/dashboard/ads-manager/create-ads-manager/[objective]/Leads/[id]/page";
