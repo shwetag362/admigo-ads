@@ -1,0 +1,26 @@
+sudo nano /srv/admigo.net/code/stack.yml
+version: "3.9"
+
+services:
+  admigo_next:
+    image: admigo-code:latest
+    env_file:
+      - .env
+    networks:
+      - web
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+
+networks:
+  web:
+    external: true

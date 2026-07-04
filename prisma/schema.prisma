@@ -1,0 +1,867 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH & USER
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  user
+  admin
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner   User         @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+  invites TeamInvite[]
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String   @map("team_id")
+  userId   String   @map("user_id")
+  role     String   @default("member") // "owner" | "member" | "viewer"
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  team          Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountAccess TeamMemberAccount[] // ← NEW
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model TeamInvite {
+  id         String    @id @default(uuid())
+  teamId     String    @map("team_id")
+  email      String                        // invited email
+  role       String    @default("member")  // role they'll get on accept
+  token      String    @unique             // secure random token in URL
+  invitedBy  String    @map("invited_by")  // userId of who sent it
+  expiresAt  DateTime  @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([teamId])
+  @@index([email])
+  @@map("team_invites")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW: Team Member ↔ Ad Account access control
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TeamMemberAccount {
+  id           String   @id @default(uuid())
+  teamMemberId String   @map("team_member_id")
+  adAccountId  String   @map("ad_account_id")
+  permissions  String[] @default([]) // e.g. ["view_campaigns","view_analytics"]
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  teamMember TeamMember    @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  adAccount  MetaAdAccount @relation("TeamMemberAdAccounts", fields: [adAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, adAccountId])
+  @@index([teamMemberId])
+  @@index([adAccountId])
+  @@map("team_member_accounts")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String?  @map("password_hash")
+  name          String?
+  avatarUrl     String?  @map("avatar_url")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  role          Role     @default(user)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sessions              Session[]
+  oauthAccounts         OAuthAccount[]
+  facebookAccounts      FacebookAccount[]
+  metaAdAccounts        MetaAdAccount[]
+  campaignDrafts        CampaignDraft[]
+  metaPages             MetaPage[]
+  campaigns             MetaCampaign[]
+  auditLogs             AuditLog[]
+  orphanedMetaResources OrphanedMetaResource[]
+  ownedTeams            Team[]       @relation("TeamOwner")
+  teamMemberships       TeamMember[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  sessionToken String   @unique @map("session_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionToken])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model OAuthAccount {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  provider          String
+  providerAccountId String    @map("provider_account_id")
+  accessToken       String?   @map("access_token")
+  refreshToken      String?   @map("refresh_token")
+  expiresAt         DateTime? @map("expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FACEBOOK / META ACCOUNTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FacebookAccount {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  facebookUserId   String    @map("facebook_user_id")
+  facebookUserName String?   @map("facebook_user_name")
+  accessToken      String    @db.Text @map("access_token")
+  refreshToken     String?   @db.Text @map("refresh_token")
+  tokenExpiresAt   DateTime? @map("token_expires_at")
+  isActive         Boolean   @default(true) @map("is_active")
+  isPrimary        Boolean   @default(false) @map("is_primary")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adAccounts MetaAdAccount[]
+
+  @@unique([userId, facebookUserId])
+  @@index([userId])
+  @@index([facebookUserId])
+  @@map("facebook_accounts")
+}
+
+model MetaAdAccount {
+  id                String    @id @default(uuid())
+  userId            String
+  facebookAccountId String    @map("facebook_account_id")
+  metaAccountId     String    @unique
+  name              String
+  currency          String
+  timezone          String
+  businessName      String?
+  accessToken       String    @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastCampaignSyncAt DateTime?
+  lastAdsetSyncAt   DateTime?
+
+  accountStatus   Int?
+  accountSpendCap Float?
+  amountSpent     Float?
+
+  // Relations
+  pixels               MetaPixel[]          @relation("AdAccountPixels")
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facebookAccount      FacebookAccount      @relation(fields: [facebookAccountId], references: [id], onDelete: Cascade)
+  campaignDrafts       CampaignDraft[]
+  campaigns            MetaCampaign[]
+  adSets               MetaAdSet[]
+  ads                  MetaAd[]
+  datasets             MetaDataset[]
+  domainVerifications  MetaDomainVerification[]
+  teamMemberAccess     TeamMemberAccount[]  @relation("TeamMemberAdAccounts") // ← NEW
+
+  @@unique([facebookAccountId, metaAccountId])
+  @@index([userId])
+  @@index([facebookAccountId])
+  @@map("meta_ad_accounts")
+}
+
+
+model MetaPixel {
+  id            String    @id @default(uuid())
+  metaPixelId   String
+  name          String
+  adAccountId   String    @map("ad_account_id")
+  capiEnabled   Boolean   @default(false)
+  isUnavailable Boolean   @default(false)
+  lastFiredTime DateTime? @map("last_fired_time")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt      @map("updated_at")
+
+  // NEW FIELDS — Events Manager
+  advancedMatchingEnabled Boolean   @default(false) @map("advanced_matching_enabled")
+  automaticEventsEnabled  Boolean   @default(true)  @map("automatic_events_enabled")
+  eventMatchQualityScore  Float     @default(0.0)   @map("event_match_quality_score")
+  totalEventsReceived     Int       @default(0)     @map("total_events_received")
+  lastEventReceivedAt     DateTime?                 @map("last_event_received_at")
+  datasetId               String?                   @map("dataset_id")
+  status                  String    @default("active")
+
+  // Existing relation
+  adAccount MetaAdAccount @relation("AdAccountPixels", fields: [adAccountId], references: [id], onDelete: Cascade)
+
+  // NEW RELATIONS — Events Manager
+  capiConfig          PixelCapiConfig?
+  customEvents        MetaCustomEvent[]
+  customConversions   MetaCustomConversion[]
+  testEvents          MetaTestEvent[]
+  diagnostics         MetaDiagnostic[]
+  domainVerifications MetaDomainVerification[]
+  partnerIntegrations MetaPartnerIntegration[]
+  signalsGateway      MetaSignalsGateway?
+  privacySettings     MetaPrivacySettings?
+  aemConfig           MetaAemConfig?
+  offlineUploads      MetaOfflineUpload[]
+  dedupEvents         MetaEventDedup[]
+
+  @@unique([adAccountId, metaPixelId])
+  @@index([adAccountId])
+  @@index([metaPixelId])
+  @@map("meta_pixels")
+}
+
+
+model MetaPage {
+  id          String   @id @default(uuid())
+  metaPageId  String
+  userId      String
+  name        String
+  accessToken String   @db.Text
+  tasks       String[]
+  category    String?
+  picture     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([metaPageId, userId])
+  @@index([userId])
+  @@map("meta_pages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMPAIGN CREATION FLOW (Draft → Meta → Sync)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CampaignDraft {
+  id             String   @id @default(uuid())
+  metaCampaignId String?  @unique
+  adAccountId    String
+  userId         String
+  name           String
+  objective      String
+  buyingType     String   @default("AUCTION")
+  status         String   @default("DRAFT")
+
+  specialAdCategories String[] @default([])
+  isAdvantagePlus     Boolean  @default(false)
+
+  // Budget (stored in smallest currency unit e.g. cents for USD, whole units for JPY)
+  dailyBudget    Int?
+  lifetimeBudget Int?
+  bidStrategy    String?
+  spendCap       Int?
+
+  // Scheduling
+  startTime DateTime?
+  endTime   DateTime?
+
+  // ✅ NEW: v3.0.0 — currency + Advantage+ intent fields
+  // currency: Snapshot of account currency at creation time for correct display later
+  // advantageAudience/Placements: Stored so Step 2 (ad set) can pre-configure Advantage+
+  // strictPlacementExclusions: When true → placement_soft_opt_out=false sent to Meta
+  currency                  String  @default("USD")
+  advantageAudience         Boolean @default(true)
+  advantagePlacements       Boolean @default(true)
+  strictPlacementExclusions Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adAccount MetaAdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  adSets    AdSetDraft[]
+
+  @@index([adAccountId])
+  @@index([userId])
+  @@map("campaign_drafts")
+}
+
+model AdSetDraft {
+  id              String  @id @default(uuid())
+  metaAdSetId     String? @unique
+  campaignDraftId String
+
+  // Basic Info
+  name             String
+  optimizationGoal String // "OFFSITE_CONVERSIONS" | "LINK_CLICKS" | "LEAD_GENERATION" etc.
+
+  // Targeting & Placements
+  targeting       Json    // Full targeting spec (geo, age, interests, etc.)
+  placements      Json?   // Manual placements (null = Advantage+ auto placements)
+  destinationType String  @default("WEBSITE") // "WEBSITE" | "APP" | "ON_AD"
+
+  // Advantage+ creative & optimization flags
+  enableDynamicCreative      Boolean @default(false)
+  valueRulesEnabled          Boolean @default(false)
+  optimizeForFirstConversion Boolean @default(false)
+
+  // Budget (in smallest currency unit)
+  dailyBudget    Int?
+  lifetimeBudget Int?
+
+  // Timing
+  startTime DateTime
+  endTime   DateTime?
+
+  // Bidding
+  bidStrategy   String @default("LOWEST_COST_WITHOUT_CAP")
+  bidAmount     Int?   // for LOWEST_COST_WITH_BID_CAP
+  costPerResult Int?   // for COST_CAP
+
+  // Promoted Object
+  promotedObject Json? // { pixel_id, custom_event_type } | { page_id } | { application_id, object_store_url }
+
+  // Pacing
+  pacingType    Json?    // ["standard"] | ["no_pacing"] | ["day_parting"]
+  isAdvantagePlus Boolean @default(false)
+
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  campaignDraft CampaignDraft @relation(fields: [campaignDraftId], references: [id], onDelete: Cascade)
+  ads           AdDraft[]
+
+  @@index([campaignDraftId])
+  @@index([metaAdSetId])
+  @@map("adset_drafts")
+}
+
+model AdDraft {
+  id             String  @id @default(uuid())
+  metaAdId       String? @unique
+  metaCreativeId String? @unique
+  adSetDraftId   String
+  name           String
+  creativeSpec   Json    // object_story_spec
+  primaryText    String  @db.Text
+  headline       String?
+  description    String?
+  callToAction   String?
+  websiteUrl     String?
+  displayUrl     String?
+  status         String  @default("DRAFT")
+
+    // ← ADD THESE:
+  adFormat           String?         // "single" | "dynamic" | "carousel" | "collection"
+  rawFbPayload       String?  @db.Text  // full payload sent to Facebook (for debugging)
+  intelligenceReport String?  @db.Text  // creative scoring JSON
+  creativeReused     Boolean  @default(false)  // true if dedup matched existing creative
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  adSetDraft AdSetDraft @relation(fields: [adSetDraftId], references: [id], onDelete: Cascade)
+
+  @@index([adSetDraftId])
+  @@map("ad_drafts")
+}
+
+
+model CreativeFingerprint {
+  id             String   @id @default(cuid())
+  fingerprint    String   @unique   // SHA-256 hex, 64 chars
+  metaCreativeId String
+  adAccountId    String
+  adFormat       String
+  status         String   @default("ACTIVE")  // "ACTIVE" | "INACTIVE"
+  useCount       Int      @default(1)
+  lastUsedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([adAccountId])
+  @@index([fingerprint])
+  @@index([metaCreativeId])
+  @@index([adAccountId, status])
+  @@map("creative_fingerprints")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// META SYNCED DATA (read from Meta API, not created by us)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MetaCampaign {
+  id              String    @id // Meta campaign ID (not UUID — Meta's own ID)
+  userId          String
+  accountId       String    // Internal MetaAdAccount.id (UUID)
+  name            String
+  status          String
+  effectiveStatus String
+  objective       String
+  startTime       DateTime?
+  stopTime        DateTime?
+  dailyBudget     String?
+  lifetimeBudget  String?
+  createdTime     DateTime
+  updatedTime     DateTime
+  insights        Json?
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
+  lastAdsetSyncAt DateTime?
+
+  // Extended Meta fields
+  budgetRemaining             String?
+  accountIdMeta               String?  // Raw Meta account_id e.g. "act_1780119226712528"
+  buyingType                  String?
+  specialAdCategories         Json     @default("[]")
+  specialAdCategoriesCategory String?
+  canUseSpendCap              Boolean?
+  configuredStatus            String?
+  isSkadnetworkAttribution    Boolean?
+  boostedObjectId             String?
+  brandSafetyScore            String?
+
+  // Relations
+  adSets  MetaAdSet[]
+  account MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, accountId])
+  @@map("meta_campaigns")
+}
+
+model MetaAdSet {
+  id              String    @id // Meta adset ID
+  campaignId      String
+  accountId       String
+  name            String
+  status          String
+  effectiveStatus String
+  dailyBudget     String?
+  lifetimeBudget  String?
+  startTime       DateTime?
+  endTime         DateTime?
+  createdTime     DateTime
+  updatedTime     DateTime
+  targeting       Json?
+  insights        Json?
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
+
+  // Extended Meta fields
+  budgetRemaining             String?
+  accountIdMeta               String?
+  bidStrategy                 String?
+  bidAmount                   String?
+  billingEvent                String?
+  optimizationSubEvent        String?
+  promotedObject              Json?
+  attributionSpec             Json?
+  isDynamicCreative           Boolean @default(false)
+  rfPredictionId              String?
+  regionalRegulatedCategories Json?
+
+  // Relations
+  campaign MetaCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  account  MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  ads      MetaAd[]
+
+  @@unique([id, accountId])
+  @@map("meta_adsets")
+}
+
+model MetaAd {
+  id              String   @id // Meta ad ID
+  adSetId         String
+  campaignId      String
+  accountId       String
+  name            String
+  status          String
+  effectiveStatus String
+  createdTime     DateTime
+  updatedTime     DateTime
+  creative        Json?
+  previews        Json?
+  insights        Json?
+  lastSyncedAt    DateTime @default(now()) @updatedAt
+
+  // Relations
+  adSet   MetaAdSet     @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  account MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([id, accountId])
+  @@map("meta_ads")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ✅ NEW: v3.0.0 — COMPLIANCE & RELIABILITY
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Immutable audit log for every campaign financial action.
+/// Required by CampaignService.emitAuditLog().
+/// Never delete records from this table — append only.
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String
+  action         String   // "CAMPAIGN_CREATED" | "CAMPAIGN_ROLLBACK"
+  resourceId     String?  // Internal CampaignDraft.id
+  metaResourceId String?  // Meta campaign ID returned by API
+  payload        String   @db.Text // Full JSON payload sent to Meta (for forensics)
+  ipAddress      String?
+  userAgent      String?
+  timestamp      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([metaResourceId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+/// Queue of Meta resources (campaigns/adsets/ads) that were created on Meta
+/// but could not be deleted during rollback due to a DB or network failure.
+/// A background job should poll resolved=false records and retry deletion.
+model OrphanedMetaResource {
+  id             String    @id @default(uuid())
+  metaResourceId String    // Meta API ID to delete (campaign/adset/ad)
+  resourceType   String    // "CAMPAIGN" | "ADSET" | "AD"
+  userId         String
+  reason         String    @db.Text // Why it became orphaned
+  resolved       Boolean   @default(false) // true once background job deletes it
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([resolved]) // Background job queries: WHERE resolved = false
+  @@index([userId])
+  @@index([resourceType])
+  @@map("orphaned_meta_resources")
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENTS MANAGER MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MetaDataset {
+  id          String   @id @default(uuid())
+  datasetId   String   @unique @map("dataset_id")
+  name        String
+  adAccountId String   @map("ad_account_id")
+  description String?
+  sourceTypes String[] @default([]) @map("source_types")
+  totalEvents Int      @default(0)  @map("total_events")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  adAccount MetaAdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+
+  @@index([adAccountId])
+  @@map("meta_datasets")
+}
+
+model PixelCapiConfig {
+  id                   String    @id @default(uuid())
+  pixelId              String    @unique @map("pixel_id")
+  datasetId            String?   @map("dataset_id")
+  capiVersion          String    @default("v2")   @map("capi_version")
+  testEventCode        String?   @map("test_event_code")
+  deduplicationEnabled Boolean   @default(true)   @map("deduplication_enabled")
+  gatewayMode          Boolean   @default(false)  @map("gateway_mode")
+  status               String    @default("inactive")
+  totalEventsSent      Int       @default(0)      @map("total_events_sent")
+  lastEventSentAt      DateTime?                  @map("last_event_sent_at")
+  createdAt            DateTime  @default(now())  @map("created_at")
+  updatedAt            DateTime  @updatedAt       @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@map("pixel_capi_configs")
+}
+
+model MetaCustomEvent {
+  id               String    @id @default(uuid())
+  pixelId          String    @map("pixel_id")
+  datasetId        String?   @map("dataset_id")
+  name             String
+  description      String?
+  eventType        String    @default("custom") @map("event_type")
+  parameters       Json      @default("[]")
+  rules            Json      @default("{}")
+  status           String    @default("active")
+  totalOccurrences Int       @default(0)        @map("total_occurrences")
+  lastSeenAt       DateTime?                    @map("last_seen_at")
+  createdAt        DateTime  @default(now())    @map("created_at")
+  updatedAt        DateTime  @updatedAt         @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@index([pixelId])
+  @@map("meta_custom_events")
+}
+
+model MetaCustomConversion {
+  id                     String   @id @default(uuid())
+  conversionId           String   @unique @map("conversion_id")
+  pixelId                String   @map("pixel_id")
+  datasetId              String?  @map("dataset_id")
+  name                   String
+  description            String?
+  customEventType        String   @default("OTHER")  @map("custom_event_type")
+  eventSourceType        String   @default("pixel")  @map("event_source_type")
+  rule                   String?  @db.Text
+  urlRules               Json     @default("[]")     @map("url_rules")
+  paramRules             Json     @default("[]")     @map("param_rules")
+  defaultConversionValue Decimal? @db.Decimal(12, 2) @map("default_conversion_value")
+  currency               String   @default("USD")
+  aggregationRule        String   @default("COUNT")  @map("aggregation_rule")
+  status                 String   @default("active")
+  createdAt              DateTime @default(now())    @map("created_at")
+  updatedAt              DateTime @updatedAt         @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@index([pixelId])
+  @@map("meta_custom_conversions")
+}
+
+model MetaOfflineUpload {
+  id           String    @id @default(uuid())
+  uploadId     String    @unique @map("upload_id")
+  pixelId      String    @map("pixel_id")
+  datasetId    String?   @map("dataset_id")
+  uploadTag    String?   @map("upload_tag")
+  uploadSource String    @default("manual") @map("upload_source")
+  totalRows    Int       @default(0)        @map("total_rows")
+  validRows    Int       @default(0)        @map("valid_rows")
+  invalidRows  Int       @default(0)        @map("invalid_rows")
+  matchedRows  Int       @default(0)        @map("matched_rows")
+  status       String    @default("pending")
+  errorMessage String?   @db.Text           @map("error_message")
+  uploadedAt   DateTime  @default(now())    @map("uploaded_at")
+  processedAt  DateTime?                    @map("processed_at")
+
+  pixel  MetaPixel          @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+  events MetaOfflineEvent[]
+
+  @@index([pixelId])
+  @@map("meta_offline_uploads")
+}
+
+model MetaOfflineEvent {
+  id          String   @id @default(uuid())
+  uploadId    String   @map("upload_id")
+  pixelId     String   @map("pixel_id")
+  datasetId   String?  @map("dataset_id")
+  eventName   String   @map("event_name")
+  eventTime   DateTime @map("event_time")
+  matchKeys   Json     @default("{}") @map("match_keys")
+  customData  Json     @default("{}") @map("custom_data")
+  currency    String?
+  value       Decimal? @db.Decimal(12, 2)
+  orderId     String?  @map("order_id")
+  status      String   @default("pending")
+  matchResult String?  @map("match_result")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  upload MetaOfflineUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@index([pixelId])
+  @@map("meta_offline_events")
+}
+
+model MetaTestEvent {
+  id           String   @id @default(uuid())
+  pixelId      String   @map("pixel_id")
+  testCode     String?  @map("test_code")
+  eventName    String   @map("event_name")
+  eventSource  String   @default("pixel") @map("event_source")
+  payload      Json     @default("{}")
+  matchQuality Float?   @map("match_quality")
+  status       String   @default("received")
+  receivedAt   DateTime @default(now()) @map("received_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@index([pixelId])
+  @@map("meta_test_events")
+}
+
+model MetaDiagnostic {
+  id             String    @id @default(uuid())
+  pixelId        String    @map("pixel_id")
+  datasetId      String?   @map("dataset_id")
+  issueType      String    @map("issue_type")
+  severity       String
+  eventName      String?   @map("event_name")
+  title          String
+  description    String    @db.Text
+  recommendation String    @db.Text
+  affectedCount  Int       @default(0) @map("affected_count")
+  status         String    @default("open")
+  firstSeenAt    DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt     DateTime  @default(now()) @map("last_seen_at")
+  resolvedAt     DateTime?               @map("resolved_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@index([pixelId, status])
+  @@map("meta_diagnostics")
+}
+
+model MetaDomainVerification {
+  id                 String    @id @default(uuid())
+  domain             String
+  pixelId            String?   @map("pixel_id")
+  adAccountId        String    @map("ad_account_id")
+  verificationMethod String    @map("verification_method")
+  verificationCode   String    @map("verification_code")
+  verificationTag    String?   @db.Text @map("verification_tag")
+  dnsTxtRecord       String?   @map("dns_txt_record")
+  htmlFileName       String?   @map("html_file_name")
+  htmlFileContent    String?   @db.Text @map("html_file_content")
+  status             String    @default("pending")
+  verifiedAt         DateTime?               @map("verified_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt      @map("updated_at")
+
+  pixel     MetaPixel?    @relation(fields: [pixelId], references: [id], onDelete: SetNull)
+  adAccount MetaAdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([domain, adAccountId])
+  @@index([pixelId])
+  @@index([adAccountId])
+  @@map("meta_domain_verifications")
+}
+
+model MetaPartnerIntegration {
+  id                String    @id @default(uuid())
+  pixelId           String    @map("pixel_id")
+  partnerName       String    @map("partner_name")
+  partnerType       String?   @map("partner_type")
+  integrationStatus String    @default("inactive") @map("integration_status")
+  config            Json      @default("{}")
+  autoEventsEnabled Boolean   @default(true)       @map("auto_events_enabled")
+  connectedAt       DateTime?                      @map("connected_at")
+  createdAt         DateTime  @default(now())      @map("created_at")
+  updatedAt         DateTime  @updatedAt           @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@unique([pixelId, partnerName])
+  @@index([pixelId])
+  @@map("meta_partner_integrations")
+}
+
+model MetaSignalsGateway {
+  id                   String   @id @default(uuid())
+  gatewayId            String   @unique @map("gateway_id")
+  pixelId              String   @unique @map("pixel_id")
+  datasetId            String?  @map("dataset_id")
+  name                 String
+  cloudProvider        String?  @map("cloud_provider")
+  region               String?
+  endpointUrl          String?  @db.Text @map("endpoint_url")
+  externalDestinations Json     @default("[]") @map("external_destinations")
+  status               String   @default("inactive")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt      @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@map("meta_signals_gateways")
+}
+
+model MetaPrivacySettings {
+  id                    String   @id @default(uuid())
+  pixelId               String   @unique @map("pixel_id")
+  dataRetentionDays     Int      @default(180)  @map("data_retention_days")
+  lduEnabled            Boolean  @default(false) @map("ldu_enabled")
+  gdprMode              Boolean  @default(false) @map("gdpr_mode")
+  ccpaMode              Boolean  @default(false) @map("ccpa_mode")
+  consentRequired       Boolean  @default(false) @map("consent_required")
+  piiHashingEnforced    Boolean  @default(true)  @map("pii_hashing_enforced")
+  dataProcessingOptions Json     @default("[]")  @map("data_processing_options")
+  updatedAt             DateTime @updatedAt      @map("updated_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@map("meta_privacy_settings")
+}
+
+model MetaAemConfig {
+  id                       String   @id @default(uuid())
+  pixelId                  String   @unique @map("pixel_id")
+  domain                   String?
+  autoManaged              Boolean  @default(true)  @map("auto_managed")
+  optedInValueOptimization Boolean  @default(false) @map("opted_in_value_optimization")
+  lastSyncedAt             DateTime @default(now()) @map("last_synced_at")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@map("meta_aem_configs")
+}
+
+model MetaEventDedup {
+  id                 String   @id @default(uuid())
+  pixelId            String   @map("pixel_id")
+  eventId            String   @map("event_id")
+  eventName          String?  @map("event_name")
+  pixelEventReceived Boolean  @default(false) @map("pixel_event_received")
+  capiEventReceived  Boolean  @default(false) @map("capi_event_received")
+  deduplicated       Boolean  @default(false)
+  receivedAt         DateTime @default(now()) @map("received_at")
+
+  pixel MetaPixel @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+
+  @@unique([pixelId, eventId])
+  @@index([pixelId])
+  @@map("meta_event_dedups")
+}

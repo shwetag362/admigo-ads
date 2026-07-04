@@ -1,0 +1,362 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+}
+
+model FacebookAccount {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  facebookUserId    String    @map("facebook_user_id")
+  facebookUserName  String?   @map("facebook_user_name")
+  accessToken       String    @db.Text @map("access_token")
+  refreshToken      String?   @db.Text @map("refresh_token")
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+  isActive          Boolean   @default(true) @map("is_active")
+  isPrimary         Boolean   @default(false) @map("is_primary")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adAccounts        MetaAdAccount[]
+
+  @@unique([userId, facebookUserId])
+  @@index([userId])
+  @@index([facebookUserId])
+  @@map("facebook_accounts")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String?        @map("password_hash")
+  name          String?
+  avatarUrl     String?        @map("avatar_url")
+  emailVerified Boolean        @default(false) @map("email_verified")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  sessions      Session[]
+  oauthAccounts OAuthAccount[]
+  facebookAccounts FacebookAccount[]  // ← ADD THIS LINE
+  metaAdAccounts  MetaAdAccount[]    // <-- ADD THIS RELATION
+  campaignDrafts CampaignDraft[]  
+  metaPages   MetaPage[]
+
+  // NEW: Opposite relation for synced campaigns
+  campaigns      MetaCampaign[]
+
+  @@map("users")
+}
+
+model OAuthAccount {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  provider          String
+  providerAccountId String    @map("provider_account_id")
+  accessToken       String?   @map("access_token")
+  refreshToken      String?   @map("refresh_token")
+  expiresAt         DateTime? @map("expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  sessionToken String   @unique @map("session_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionToken])
+  @@index([userId])
+  @@map("sessions")
+}
+
+
+// schema.prisma (add these models to your current file)
+
+model MetaAdAccount {
+  id                   String    @id @default(uuid())
+  userId               String
+  facebookAccountId    String    @map("facebook_account_id")  // ← ADD THIS
+  metaAccountId        String    @unique
+  name                 String
+  currency             String
+  timezone             String
+  businessName         String?
+  accessToken          String    @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastCampaignSyncAt   DateTime?
+  lastAdsetSyncAt      DateTime?
+
+  pixel                MetaPixel? @relation("AdAccountPixel")
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facebookAccount      FacebookAccount @relation(fields: [facebookAccountId], references: [id], onDelete: Cascade)  // ← ADD THIS
+  campaignDrafts       CampaignDraft[]
+  campaigns            MetaCampaign[]
+  adSets               MetaAdSet[]
+  ads                  MetaAd[]
+
+  @@unique([facebookAccountId, metaAccountId])  // ← ADD THIS
+  @@index([userId])
+  @@index([facebookAccountId])  // ← ADD THIS
+  @@map("meta_ad_accounts")
+}
+
+
+model MetaPixel {
+  id            String   @id @default(uuid())
+  metaPixelId   String   @unique
+  name          String
+  adAccountId   String   @unique   // One pixel per ad account
+  adAccount     MetaAdAccount @relation("AdAccountPixel", fields: [adAccountId], references: [id], onDelete: Cascade)
+  
+  @@map("meta_pixels")
+}
+
+model MetaPage {
+  id          String   @id @default(uuid())
+  metaPageId  String
+  userId      String
+  name        String
+  accessToken String   @db.Text
+  tasks       String[]
+  category    String?
+  picture     String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([metaPageId, userId])   // ← THIS LINE IS REQUIRED
+  @@index([userId])
+  @@map("meta_pages")
+}
+
+model CampaignDraft {
+  id                    String   @id @default(uuid())
+  metaCampaignId        String?  @unique
+  adAccountId           String
+  userId                String                            // ⭐ REQUIRED
+  name                  String
+  objective             String
+  buyingType            String   @default("AUCTION")
+  status                String   @default("DRAFT")
+  specialAdCategories   String[] @default([])
+  isAdvantagePlus       Boolean  @default(false)
+
+  dailyBudget   Int?
+  lifetimeBudget Int?
+  bidStrategy   String?
+  spendCap      Int?
+
+  // ADD THESE TWO LINES
+  startTime DateTime?
+  endTime DateTime?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adAccount             MetaAdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  adSets                AdSetDraft[]
+
+  @@index([adAccountId])
+  @@index([userId])
+  @@map("campaign_drafts")
+}
+
+
+model AdSetDraft {
+  id                String    @id @default(uuid())
+  metaAdSetId       String?   @unique
+  campaignDraftId   String
+  
+  // Basic Info
+  name              String
+  optimizationGoal  String    // e.g., "OFFSITE_CONVERSIONS", "LINK_CLICKS", "LEAD_GENERATION"
+  
+  // Targeting & Placements
+  targeting         Json      // Full targeting spec (geo, age, interests, etc.)
+  placements        Json?     // Manual placements (if not using Advantage+)
+  destinationType   String    @default("WEBSITE") // "WEBSITE", "APP", "ON_AD"
+  
+  // Budget
+  dailyBudget       Int?      // in cents (e.g., 10000 = $100)
+  lifetimeBudget    Int?      // in cents
+  
+  // Timing
+  startTime         DateTime
+  endTime           DateTime?
+  
+  // Bidding Strategy
+  bidStrategy       String    @default("LOWEST_COST_WITHOUT_CAP")
+  bidAmount         Int?      // in cents - for LOWEST_COST_WITH_BID_CAP
+  costPerResult     Int?      // in cents - for COST_CAP strategy
+  
+  // Promoted Object (Pixel, Page, App)
+  promotedObject    Json?     // { pixel_id, custom_event_type } OR { page_id } OR { application_id, object_store_url }
+  
+  // Pacing & Advantage+
+  pacingType        Json?     // e.g., ["standard"] or ["no_pacing"]
+  isAdvantagePlus   Boolean   @default(false) // true if using Advantage+ Audience or Placements
+
+  // ADD THESE 3 NEW FIELDS (after "placements" field):
+  enableDynamicCreative       Boolean       @default(false)
+  valueRulesEnabled           Boolean       @default(false)
+  optimizeForFirstConversion  Boolean       @default(false)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  campaignDraft     CampaignDraft @relation(fields: [campaignDraftId], references: [id], onDelete: Cascade)
+  ads               AdDraft[]
+  
+  @@index([campaignDraftId])
+  @@index([metaAdSetId])
+  @@map("adset_drafts")
+}
+
+model AdDraft {
+  id                String   @id @default(uuid())
+  metaAdId          String?  @unique
+  metaCreativeId    String?  @unique
+  adSetDraftId      String
+  name              String
+  creativeSpec      Json     // object_story_spec
+  primaryText       String   @db.Text
+  headline          String?
+  description       String?
+  callToAction      String?
+  websiteUrl        String?
+  displayUrl        String?
+  status            String   @default("DRAFT")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  adSetDraft        AdSetDraft @relation(fields: [adSetDraftId], references: [id], onDelete: Cascade)
+
+  @@index([adSetDraftId])
+  @@map("ad_drafts")
+}
+
+
+model MetaCampaign {
+  id              String    @id // Meta campaign ID
+  userId          String
+  accountId       String    // Internal MetaAdAccount.id (UUID)
+  name            String
+  status          String
+  effectiveStatus String
+  objective       String
+  startTime       DateTime?
+  stopTime        DateTime?
+  dailyBudget     String?
+  lifetimeBudget  String?
+  createdTime     DateTime
+  updatedTime     DateTime
+  insights        Json?
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
+
+  budgetRemaining          String?
+accountIdMeta            String?    // stores the raw "account_id" like "1780119226712528"
+buyingType               String?
+specialAdCategories      Json       @default("[]")
+specialAdCategoriesCategory String?
+canUseSpendCap           Boolean?
+configuredStatus         String?
+isSkadnetworkAttribution Boolean?
+boostedObjectId          String?
+brandSafetyScore         String?
+
+ lastAdsetSyncAt    DateTime? 
+
+  // Relations
+  adSets          MetaAdSet[]
+  account         MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, accountId])
+  @@map("meta_campaigns")
+}
+
+model MetaAdSet {
+  id              String    @id
+  campaignId      String
+  accountId       String
+  name            String
+  status          String
+  effectiveStatus String
+  dailyBudget     String?
+  startTime       DateTime?
+  endTime         DateTime?
+  createdTime     DateTime
+  updatedTime     DateTime
+  targeting       Json?
+  insights        Json?
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
+  lifetimeBudget String?
+  budgetRemaining          String?
+accountIdMeta            String?
+bidStrategy              String?
+bidAmount                String?
+billingEvent             String?
+optimizationSubEvent     String?
+promotedObject           Json?
+attributionSpec          Json?
+isDynamicCreative        Boolean    @default(false)
+rfPredictionId           String?
+regionalRegulatedCategories Json?
+
+  // Relations
+  campaign        MetaCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ads             MetaAd[]
+  account         MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([id, accountId])
+  @@map("meta_adsets")
+}
+
+model MetaAd {
+  id              String    @id
+  adSetId         String
+  campaignId      String
+  accountId       String
+  name            String
+  status          String
+  effectiveStatus String
+  createdTime     DateTime
+  updatedTime     DateTime
+  creative        Json?
+  previews        Json?
+  insights        Json?
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
+
+  // Relations
+  adSet           MetaAdSet     @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  account         MetaAdAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([id, accountId])
+  @@map("meta_ads")
+}

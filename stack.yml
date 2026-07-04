@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  admigo_next:
+    image: admigo-code:${IMAGE_TAG}
+    env_file:
+      - .env
+    networks:
+      - web
+      - db-net
+
+    deploy:
+      replicas: 2
+
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+      restart_policy:
+        condition: any
+
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+
+networks:
+  web:
+    external: true
+  db-net:
+    external: true
