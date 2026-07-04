@@ -22,13 +22,11 @@ const eslintConfig = defineConfig([
         { type: "hooks", pattern: "hooks/**" },
         { type: "app", pattern: "app/**" },
       ],
-      // Acknowledged legacy leaks to remove during migration:
-      //  - lib/middleware/withAuth.js imports authOptions from app/ (auth config
-      //    should move into modules/auth); lib/services/* is legacy infra in lib/.
+      // lib/services/* is a legacy service that lives under lib/ (confusing name);
+      // exempt it from element classification until it moves into a module.
       "boundaries/ignore": [
         "**/*.test.*",
         "**/*.spec.*",
-        "lib/middleware/**",
         "lib/services/**",
       ],
     },
