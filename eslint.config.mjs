@@ -17,7 +17,6 @@ const eslintConfig = defineConfig([
       "boundaries/elements": [
         { type: "lib", pattern: "lib/**" },
         { type: "modules", pattern: "modules/**" },
-        { type: "services", pattern: "services/**" },
         { type: "components", pattern: "components/**" },
         { type: "hooks", pattern: "hooks/**" },
         { type: "app", pattern: "app/**" },
@@ -35,9 +34,8 @@ const eslintConfig = defineConfig([
             // Domain: business logic. Only the kernel + other module barrels.
             { from: ["modules"], allow: ["modules", "lib"] },
             // App (routes/pages): the composition edge — may use everything.
-            { from: ["app"], allow: ["app", "modules", "lib", "services", "components", "hooks"] },
-            // Legacy + UI: permissive during migration.
-            { from: ["services"], allow: ["services", "lib", "modules"] },
+            { from: ["app"], allow: ["app", "modules", "lib", "components", "hooks"] },
+            // UI: permissive during migration.
             { from: ["components"], allow: ["components", "lib", "hooks", "modules"] },
             { from: ["hooks"], allow: ["hooks", "lib"] },
           ],

@@ -2,9 +2,9 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { formatMetaErrorResponse } from "@/lib/utils";
-import { CampaignService } from "@/services/CampaignService";
-import { AdSetService } from "@/services/AdSetService";
-import { AdService } from "@/services/AdService";
+import { CampaignService } from "@/modules/campaigns/campaign.legacy-service";
+import { AdSetService } from "@/modules/adsets/adset.legacy-service";
+import { AdService } from "@/modules/ads/ad.legacy-service";
 import { withAuth } from "@/lib/middleware/withAuth";
 
 export const POST = withAuth(async (request, routeContext, ctx) => {
