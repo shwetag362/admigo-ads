@@ -1,182 +1,4 @@
 // // app/api/campaign/create/route.js
-// // Production-Ready Route with Enhanced Meta Error Handling
-// // Features:
-// // - Comprehensive error logging with full Meta API details
-// // - Structured error responses with all Meta metadata
-// // - Proper HTTP status codes
-// // - User-friendly error messages with actionable guidance
-
-// import { NextResponse } from "next/server";
-// import { getServerSession } from "next-auth";
-// import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-// import { logger } from "@/lib/logger";
-// import { formatMetaErrorResponse } from "@/lib/utils";
-// import { CampaignService } from "@/services/CampaignService";
-// import { AdSetService } from "@/services/AdSetService";
-// import { AdService } from "@/services/AdService";
-
-// export async function POST(request) {
-//   logger.start("POST /api/campaign/create");
-
-//   try {
-//     // =====================================================
-//     // 1. AUTHENTICATION
-//     // =====================================================
-//     const session = await getServerSession(authOptions);
-    
-//     if (!session?.user?.id) {
-//       logger.error("Unauthorized session", {});
-//       return NextResponse.json(
-//         { 
-//           success: false, 
-//           error: { 
-//             message: "Unauthorized - Please log in to continue",
-//             statusCode: 401
-//           } 
-//         }, 
-//         { status: 401 }
-//       );
-//     }
-
-//     logger.success("Session validated", { userId: session.user.id });
-
-//     // =====================================================
-//     // 2. PARSE REQUEST BODY
-//     // =====================================================
-//     let body;
-//     try {
-//       body = await request.json();
-//       logger.info("Incoming request body", body);
-//     } catch (parseError) {
-//       logger.error("Invalid JSON in request body", parseError);
-//       return NextResponse.json(
-//         {
-//           success: false,
-//           error: {
-//             message: "Invalid request body - must be valid JSON",
-//             statusCode: 400
-//           }
-//         },
-//         { status: 400 }
-//       );
-//     }
-
-//     const { step, data } = body;
-
-//     // Validate step and data
-//     if (!step || !data) {
-//       logger.warn("Missing step or data in request");
-//       return NextResponse.json(
-//         {
-//           success: false,
-//           error: {
-//             message: "Missing required fields: 'step' and 'data' are required",
-//             statusCode: 400,
-//             missingFields: [
-//               !step ? 'step' : null,
-//               !data ? 'data' : null
-//             ].filter(Boolean)
-//           }
-//         },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Validate step value
-//     const validSteps = ['campaign', 'adset', 'ad'];
-//     if (!validSteps.includes(step)) {
-//       logger.warn(`Invalid step value: ${step}`);
-//       return NextResponse.json(
-//         {
-//           success: false,
-//           error: {
-//             message: `Invalid step: '${step}'. Valid steps are: ${validSteps.join(', ')}`,
-//             statusCode: 400,
-//             validSteps
-//           }
-//         },
-//         { status: 400 }
-//       );
-//     }
-
-//     // =====================================================
-//     // 3. EXECUTE SERVICE BASED ON STEP
-//     // =====================================================
-//     const userId = session.user.id;
-//     let result;
-//     let serviceName;
-
-//     logger.section(`EXECUTING STEP: ${step.toUpperCase()}`);
-
-//     switch (step) {
-//       case "campaign":
-//         serviceName = "CampaignService";
-//         logger.info(`Initializing ${serviceName}...`);
-//         const campaignService = new CampaignService(userId);
-//         result = await campaignService.create(data);
-//         break;
-
-//       case "adset":
-//         serviceName = "AdSetService";
-//         logger.info(`Initializing ${serviceName}...`);
-//         const adSetService = new AdSetService(userId);
-//         result = await adSetService.create(data);
-//         break;
-
-//       case "ad":
-//         serviceName = "AdService";
-//         logger.info(`Initializing ${serviceName}...`);
-//         const adService = new AdService(userId);
-//         result = await adService.create(data);
-//         break;
-
-//       default:
-//         // This should never happen due to earlier validation
-//         throw new Error(`Invalid step: ${step}`);
-//     }
-
-//     // =====================================================
-//     // 4. SUCCESS RESPONSE
-//     // =====================================================
-//     logger.section(`✅ ${step.toUpperCase()} CREATION COMPLETED SUCCESSFULLY`);
-//     logger.success("Returning success response", result);
-
-//     return NextResponse.json(result, { status: 200 });
-
-//   } catch (error) {
-//     // =====================================================
-//     // 5. ERROR HANDLING
-//     // =====================================================
-//     logger.section("❌ ERROR OCCURRED IN API ROUTE");
-//     logger.error("API Route Failure", error);
-
-//     // Format error response with all Meta API details
-//     const errorResponse = formatMetaErrorResponse(error);
-//     const statusCode = error.statusCode || 500;
-
-//     // Log the formatted error response that will be sent to client
-//     logger.info("Formatted Error Response", {
-//       statusCode,
-//       response: errorResponse
-//     });
-
-//     return NextResponse.json(errorResponse, { status: statusCode });
-//   }
-// }
-
-// // =====================================================
-// // OPTIONAL: Add OPTIONS handler for CORS if needed
-// // =====================================================
-// export async function OPTIONS(request) {
-//   return new NextResponse(null, {
-//     status: 200,
-//     headers: {
-//       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-//       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-//     },
-//   });
-// }
-
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { formatMetaErrorResponse } from "@/lib/utils";
@@ -207,7 +29,7 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
             statusCode: 400,
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -230,7 +52,7 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
             ].filter(Boolean),
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -246,7 +68,7 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
             validSteps,
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -271,13 +93,13 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
               statusCode: 400,
             },
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!ctx.adAccountAccess.canAccess(data.adAccountId)) {
         logger.warn("Access denied — account not in user access set", {
-          userId:      ctx.userId,
+          userId: ctx.userId,
           adAccountId: data.adAccountId,
         });
         return NextResponse.json(
@@ -288,41 +110,50 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
               statusCode: 403,
             },
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
-      if (!ctx.adAccountAccess.hasPermission(data.adAccountId, "create_campaigns")) {
+      if (
+        !ctx.adAccountAccess.hasPermission(data.adAccountId, "create_campaigns")
+      ) {
         logger.warn("Permission denied — create_campaigns required", {
-          userId:          ctx.userId,
-          adAccountId:     data.adAccountId,
-          accessType:      ctx.adAccountAccess.getAccount(data.adAccountId)?.accessType,
-          userPermissions: ctx.adAccountAccess.getAccount(data.adAccountId)?.permissions,
+          userId: ctx.userId,
+          adAccountId: data.adAccountId,
+          accessType: ctx.adAccountAccess.getAccount(data.adAccountId)
+            ?.accessType,
+          userPermissions: ctx.adAccountAccess.getAccount(data.adAccountId)
+            ?.permissions,
         });
         return NextResponse.json(
           {
             success: false,
             error: {
-              message:            "You do not have permission to create campaigns on this ad account",
-              statusCode:         403,
+              message:
+                "You do not have permission to create campaigns on this ad account",
+              statusCode: 403,
               requiredPermission: "create_campaigns",
             },
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
       logger.success("Campaign step — access and permission verified", {
-        userId:      ctx.userId,
+        userId: ctx.userId,
         adAccountId: data.adAccountId,
-        accessType:  ctx.adAccountAccess.getAccount(data.adAccountId)?.accessType,
+        accessType: ctx.adAccountAccess.getAccount(data.adAccountId)
+          ?.accessType,
       });
     } else {
       // adset / ad steps — no adAccountId in body, services handle their own checks
-      logger.info(`${step} step — access check delegated to service after draft load`, {
-        userId: ctx.userId,
-        step,
-      });
+      logger.info(
+        `${step} step — access check delegated to service after draft load`,
+        {
+          userId: ctx.userId,
+          step,
+        },
+      );
     }
 
     // =====================================================
@@ -337,8 +168,8 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
         logger.info("Initializing CampaignService...");
         const campaignService = new CampaignService(
           ctx.userId,
-          {},                 // requestContext
-          ctx.adAccountAccess // pass resolved access
+          {}, // requestContext
+          ctx.adAccountAccess, // pass resolved access
         );
         result = await campaignService.create(data);
         break;
@@ -349,7 +180,7 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
         const adSetService = new AdSetService(
           ctx.userId,
           {},
-          ctx.adAccountAccess
+          ctx.adAccountAccess,
         );
         result = await adSetService.create(data);
         break;
@@ -357,11 +188,7 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
 
       case "ad": {
         logger.info("Initializing AdService...");
-        const adService = new AdService(
-          ctx.userId,
-          {},
-          ctx.adAccountAccess
-        );
+        const adService = new AdService(ctx.userId, {}, ctx.adAccountAccess);
         result = await adService.create(data);
         break;
       }
@@ -377,7 +204,6 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
     logger.success("Returning success response", result);
 
     return NextResponse.json(result, { status: 200 });
-
   } catch (error) {
     // =====================================================
     // 6. ERROR HANDLING
@@ -388,7 +214,10 @@ export const POST = withAuth(async (request, routeContext, ctx) => {
     const errorResponse = formatMetaErrorResponse(error);
     const statusCode = error.statusCode || 500;
 
-    logger.info("Formatted Error Response", { statusCode, response: errorResponse });
+    logger.info("Formatted Error Response", {
+      statusCode,
+      response: errorResponse,
+    });
 
     return NextResponse.json(errorResponse, { status: statusCode });
   }
