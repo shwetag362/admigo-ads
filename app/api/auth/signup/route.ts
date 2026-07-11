@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function POST(req) {
+export async function POST(req: Request) {
   // Throttle account creation per IP to blunt abuse/enumeration.
   const ip = clientIp(req.headers);
   const rl = await rateLimit(`signup:${ip}`, { limit: 5, windowSec: 600 });
@@ -54,7 +54,7 @@ export async function POST(req) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     // Log server-side; never leak error internals to the client.
     console.error("[signup] error:", error);
 
