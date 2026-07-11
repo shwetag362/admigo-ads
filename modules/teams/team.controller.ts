@@ -74,6 +74,22 @@ export function makeTeamController(service: TeamService) {
 
       return { invite, inviteUrl };
     },
+    async acceptInvite(session: Session, token: string) {
+      const userId = requireUserId(session);
+      const result = await service.acceptInvite(userId, token);
+      return { success: true, team: result.team };
+    },
+    async resendInvite(session: Session, token: string) {
+      const userId = requireUserId(session);
+      const invite = await service.resendInvite(userId, token);
+      const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${invite.token}`;
+      return { invite, inviteUrl };
+    },
+    async revokeInvite(session: Session, token: string) {
+      const userId = requireUserId(session);
+      await service.revokeInvite(userId, token);
+      return { success: true };
+    },
   };
 }
 

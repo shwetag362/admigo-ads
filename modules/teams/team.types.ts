@@ -41,3 +41,7 @@ export interface TeamInvite {
   createdAt: Date;
   team?: { name: string } | null;
 }
+
+export interface TeamInviteWithTeam extends TeamInvite {
+  team: { id: string; name: string; ownerId: string } & { name: string };
+}

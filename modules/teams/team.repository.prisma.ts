@@ -101,4 +101,42 @@ export const prismaTeamRepository: TeamRepository = {
       include: { team: { select: { name: true } } },
     });
   },
+
+  async findInviteByToken(token) {
+    return prisma.teamInvite.findUnique({
+      where: { token },
+      include: { team: { select: { id: true, name: true, ownerId: true } } },
+    });
+  },
+
+  async isMember(teamId, userId) {
+    const m = await prisma.teamMember.findUnique({
+      where: { teamId_userId: { teamId, userId } },
+      select: { id: true },
+    });
+    return !!m;
+  },
+
+  async acceptInviteTx(token, teamId, userId, role) {
+    return prisma.$transaction(async (tx: any) => {
+      const member = await tx.teamMember.create({ data: { teamId, userId, role } });
+      const invite = await tx.teamInvite.update({
+        where: { token },
+        data: { acceptedAt: new Date() },
+        include: { team: true },
+      });
+      return { member, team: invite.team };
+    });
+  },
+
+  async extendInvite(token) {
+    return prisma.teamInvite.update({
+      where: { token },
+      data: { expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+    });
+  },
+
+  async deleteInvite(token) {
+    await prisma.teamInvite.delete({ where: { token } });
+  },
 };

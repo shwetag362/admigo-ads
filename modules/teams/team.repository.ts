@@ -2,7 +2,13 @@
 // The service depends on THIS, never on Prisma. Swap the implementation
 // (Prisma, a fake in tests, another DB) without touching business logic.
 import type { CreateTeamInput } from "./team.schema";
-import type { Team, TeamMembership, TeamDetail, TeamInvite } from "./team.types";
+import type {
+  Team,
+  TeamMembership,
+  TeamDetail,
+  TeamInvite,
+  TeamInviteWithTeam,
+} from "./team.types";
 
 export interface TeamRepository {
   listMembershipsForUser(userId: string): Promise<TeamMembership[]>;
@@ -16,4 +22,12 @@ export interface TeamRepository {
   getMemberRole(teamId: string, userId: string): Promise<string | null>;
   /** Replace any pending invite for this email, then create a fresh one. */
   createInvite(teamId: string, email: string, role: string, invitedBy: string): Promise<TeamInvite>;
+  /** Invite by token, with its team (incl. ownerId). */
+  findInviteByToken(token: string): Promise<TeamInviteWithTeam | null>;
+  isMember(teamId: string, userId: string): Promise<boolean>;
+  /** Accept: create membership + mark invite accepted, atomically. */
+  acceptInviteTx(token: string, teamId: string, userId: string, role: string): Promise<{ team: unknown }>;
+  /** Extend a pending invite's expiry (resend). */
+  extendInvite(token: string): Promise<TeamInvite>;
+  deleteInvite(token: string): Promise<void>;
 }
