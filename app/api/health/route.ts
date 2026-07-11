@@ -1,4 +1,4 @@
-// app/api/health/route.js — readiness/liveness probe (public, no auth).
+// app/api/health/route.ts — readiness/liveness probe (public, no auth).
 // Checks DB + Redis connectivity. 200 when healthy, 503 when a critical
 // dependency is down. Used by docker-compose healthchecks / k8s probes.
 import { NextResponse } from "next/server";

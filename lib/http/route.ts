@@ -17,10 +17,9 @@ import { ZodError } from "zod";
 import { AppError, RateLimitError } from "@/lib/errors/AppError";
 import { logger } from "@/lib/observability/logger";
 
-type RouteHandler = (
-  req: NextRequest,
-  ctx: { params?: Record<string, string | string[]> },
-) => Promise<Response> | Response;
+// Matches Next.js 15/16 route-handler signature (params is a Promise).
+type RouteContext = { params: Promise<Record<string, string | string[]>> };
+type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<Response> | Response;
 
 /** JSON success helper. */
 export function json(data: unknown, status = 200): NextResponse {
