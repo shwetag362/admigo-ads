@@ -8,7 +8,8 @@ import { tokenEncryptionExtension } from '@/lib/security/prismaEncryption';
 
 const { Pool } = pg;
 
-const globalForPrisma = globalThis;
+type ExtendedPrisma = ReturnType<typeof createPrismaClient>;
+const globalForPrisma = globalThis as unknown as { prisma?: ExtendedPrisma };
 
 function createPrismaClient() {
   const pool = new Pool({
