@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:int": "vitest run -c vitest.int.config.ts",
     "worker": "tsx workers/index.ts",
     "encrypt:tokens": "node scripts/encrypt-existing-tokens.mjs"
   },

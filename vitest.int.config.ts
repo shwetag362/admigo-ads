@@ -3,19 +3,19 @@ import path from "node:path";
 
 const root = process.cwd();
 
+// Integration tests: run the real Prisma repositories against a LIVE database
+// (read-only). Loads the real .env for DATABASE_URL. Run with: npm run test:int
 export default defineConfig({
   test: {
     environment: "node",
-    setupFiles: ["./test/setup.ts"],
-    include: ["**/*.test.ts"],
-    // Integration tests (*.int.test.ts) run against a live DB via test:int.
-    exclude: ["node_modules/**", ".next/**", "**/*.int.test.ts"],
+    setupFiles: ["./test/setup.int.ts"],
+    include: ["**/*.int.test.ts"],
+    exclude: ["node_modules/**", ".next/**"],
+    testTimeout: 20000,
   },
   resolve: {
     alias: [
-      // Match the tsconfig "@/*" -> project root mapping.
       { find: /^@\/(.*)$/, replacement: path.resolve(root, "$1") },
-      // Next's 'server-only' guard throws under plain Node; stub it in tests.
       { find: /^server-only$/, replacement: path.resolve(root, "test/stubs/server-only.ts") },
     ],
   },
