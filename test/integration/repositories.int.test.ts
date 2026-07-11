@@ -6,6 +6,7 @@ import { prismaAdRepository } from "@/modules/ads/ad.repository.prisma";
 import { prismaAdAccountRepository } from "@/modules/ad-accounts/ad-account.repository.prisma";
 import { prismaPixelRepository } from "@/modules/events-manager/pixel.repository.prisma";
 import { prismaDatasetRepository } from "@/modules/events-manager/dataset.repository.prisma";
+import { prismaCustomConversionRepository } from "@/modules/events-manager/custom-conversion.repository.prisma";
 import { prismaTeamRepository } from "@/modules/teams/team.repository.prisma";
 
 // A UUID that owns nothing — queries must run and return empty (read-only, safe).
@@ -33,6 +34,9 @@ describe("repositories (integration · live DB · read-only)", () => {
   });
   it("datasets.listForUser executes", async () => {
     expect(await prismaDatasetRepository.listForUser(NO_USER, { limit: 5 })).toEqual([]);
+  });
+  it("custom-conversions.listForUser executes", async () => {
+    expect(await prismaCustomConversionRepository.listForUser(NO_USER, { limit: 5 })).toEqual([]);
   });
   it("teams.listMembershipsForUser executes", async () => {
     expect(await prismaTeamRepository.listMembershipsForUser(NO_USER)).toEqual([]);

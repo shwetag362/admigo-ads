@@ -26,3 +26,17 @@ export type { DatasetRepository } from "./dataset.repository";
 export type { DatasetSummary } from "./dataset.types";
 export type { DatasetService } from "./dataset.service";
 export type { DatasetController } from "./dataset.controller";
+
+// Custom conversions slice
+import { prismaCustomConversionRepository } from "./custom-conversion.repository.prisma";
+import { makeCustomConversionService } from "./custom-conversion.service";
+import { makeCustomConversionController } from "./custom-conversion.controller";
+
+export const customConversionService = makeCustomConversionService(prismaCustomConversionRepository);
+export const customConversionController = makeCustomConversionController(customConversionService);
+
+export { ListCustomConversionsQuery } from "./custom-conversion.schema";
+export type { CustomConversionRepository } from "./custom-conversion.repository";
+export type { CustomConversionSummary } from "./custom-conversion.types";
+export type { CustomConversionService } from "./custom-conversion.service";
+export type { CustomConversionController } from "./custom-conversion.controller";
