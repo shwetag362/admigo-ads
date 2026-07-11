@@ -4,6 +4,7 @@
 // Consumes BullMQ queues backed by Redis and processes jobs with retries +
 // idempotency. Scales independently of the web app. Reuses lib/queue contracts
 // so producer and consumer can never drift.
+import "dotenv/config";
 import { Worker, type ConnectionOptions } from "bullmq";
 import { getQueueConnection, QUEUE_NAMES } from "@/lib/queue";
 import { logger } from "@/lib/observability/logger";

@@ -62,7 +62,8 @@ export async function enqueue<K extends QueueName>(
   const { idempotencyKey, ...rest } = opts;
   const job = await queue.add(name, data, {
     ...DEFAULT_JOB_OPTS,
-    jobId: idempotencyKey,
+    // BullMQ forbids ':' in custom job ids; sanitize so any key is safe.
+    jobId: idempotencyKey?.replace(/:/g, "_"),
     ...rest,
   });
   return job.id ?? null;
