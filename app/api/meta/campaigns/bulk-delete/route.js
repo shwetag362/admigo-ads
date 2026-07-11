@@ -6,8 +6,8 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cache } from '@/lib/meta/cache';
-import { MetaApiClient } from '@/lib/meta/apiClient';
+import { cache } from '@/lib/integrations/meta/cache';
+import { MetaApiClient } from '@/lib/integrations/meta/apiClient';
 import { Campaign } from 'facebook-nodejs-business-sdk';
 import { withAuth } from '@/lib/middleware/withAuth';
 

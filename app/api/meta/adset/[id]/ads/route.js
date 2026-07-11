@@ -7,16 +7,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { cache } from '@/lib/meta/cache';
-import { MetaApiClient } from '@/lib/meta/apiClient';
-import { META_FIELDS } from '@/lib/meta/constants';
-import { rateLimiter } from '@/lib/meta/rateLimiter';
+import { cache } from '@/lib/integrations/meta/cache';
+import { MetaApiClient } from '@/lib/integrations/meta/apiClient';
+import { META_FIELDS } from '@/lib/integrations/meta/constants';
+import { rateLimiter } from '@/lib/integrations/meta/rateLimiter';
 import { AdSet, Ad, AdCreative } from 'facebook-nodejs-business-sdk';
 import {
   formatAdFromDB,
   buildAdUpdateData,
   buildAdCreateData,
-} from '@/lib/meta/helpers';
+} from '@/lib/integrations/meta/helpers';
 import { withAuth } from '@/lib/middleware/withAuth';
 
 // ============================================

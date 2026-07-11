@@ -8,15 +8,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { cache } from '@/lib/meta/cache';
-import { MetaApiClient } from '@/lib/meta/apiClient';
-import { META_FIELDS, BATCH_CONFIG } from '@/lib/meta/constants';
+import { cache } from '@/lib/integrations/meta/cache';
+import { MetaApiClient } from '@/lib/integrations/meta/apiClient';
+import { META_FIELDS, BATCH_CONFIG } from '@/lib/integrations/meta/constants';
 import { AdAccount, Campaign, AdSet } from 'facebook-nodejs-business-sdk';
 import {
   formatAdSetFromDB,
   buildAdSetUpdateData,
   buildAdSetCreateData,
-} from '@/lib/meta/helpers';
+} from '@/lib/integrations/meta/helpers';
 import { withAuth } from '@/lib/middleware/withAuth';
 
 // ============================================
