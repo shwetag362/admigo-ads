@@ -30,4 +30,17 @@ export interface TeamRepository {
   /** Extend a pending invite's expiry (resend). */
   extendInvite(token: string): Promise<TeamInvite>;
   deleteInvite(token: string): Promise<void>;
+
+  getMemberById(memberId: string): Promise<{ id: string; teamId: string; userId: string } | null>;
+  deleteMember(memberId: string): Promise<void>;
+  /** Which of these account ids are owned by userId. */
+  ownedAccountIds(accountIds: string[], userId: string): Promise<Set<string>>;
+  /** Replace a member's ad-account access set; returns the new rows. */
+  replaceMemberAccounts(memberId: string, assignments: AccountAssignment[]): Promise<unknown[]>;
+  listMemberAccounts(memberId: string): Promise<unknown[]>;
+}
+
+export interface AccountAssignment {
+  adAccountId: string;
+  permissions?: string[];
 }

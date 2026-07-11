@@ -139,4 +139,55 @@ export const prismaTeamRepository: TeamRepository = {
   async deleteInvite(token) {
     await prisma.teamInvite.delete({ where: { token } });
   },
+
+  async getMemberById(memberId) {
+    return prisma.teamMember.findUnique({
+      where: { id: memberId },
+      select: { id: true, teamId: true, userId: true },
+    });
+  },
+
+  async deleteMember(memberId) {
+    await prisma.teamMember.delete({ where: { id: memberId } });
+  },
+
+  async ownedAccountIds(accountIds, userId) {
+    const rows = await prisma.metaAdAccount.findMany({
+      where: { id: { in: accountIds }, userId },
+      select: { id: true },
+    });
+    return new Set<string>(rows.map((r: any) => r.id));
+  },
+
+  async replaceMemberAccounts(memberId, assignments) {
+    await prisma.$transaction([
+      prisma.teamMemberAccount.deleteMany({ where: { teamMemberId: memberId } }),
+      ...(assignments.length > 0
+        ? [
+            prisma.teamMemberAccount.createMany({
+              data: assignments.map((a) => ({
+                teamMemberId: memberId,
+                adAccountId: a.adAccountId,
+                permissions: a.permissions ?? [],
+              })),
+            }),
+          ]
+        : []),
+    ]);
+    return prisma.teamMemberAccount.findMany({
+      where: { teamMemberId: memberId },
+      include: {
+        adAccount: { select: { id: true, name: true, metaAccountId: true, currency: true } },
+      },
+    });
+  },
+
+  async listMemberAccounts(memberId) {
+    return prisma.teamMemberAccount.findMany({
+      where: { teamMemberId: memberId },
+      include: {
+        adAccount: { select: { id: true, name: true, metaAccountId: true, currency: true } },
+      },
+    });
+  },
 };

@@ -51,6 +51,45 @@ export function makeTeamService(repo: TeamRepository) {
       if (invite.team.ownerId !== userId) throw new ForbiddenError();
       await repo.deleteInvite(token);
     },
+    async removeMember(userId: string, teamId: string, memberId: string) {
+      const role = await repo.getMemberRole(teamId, userId);
+      if (role !== "owner") throw new ForbiddenError("Only owners can remove members");
+      const target = await repo.getMemberById(memberId);
+      if (!target) throw new NotFoundError("Member not found");
+      if (target.userId === userId) throw new BadRequestError("Cannot remove yourself");
+      await repo.deleteMember(memberId);
+    },
+    async setMemberAccounts(
+      userId: string,
+      teamId: string,
+      memberId: string,
+      assignments: unknown,
+    ) {
+      const ownerId = await repo.getOwnerId(teamId);
+      if (!ownerId) throw new NotFoundError("Team not found");
+      if (ownerId !== userId) {
+        throw new ForbiddenError("Only the team owner can manage account access");
+      }
+      const membership = await repo.getMemberById(memberId);
+      if (!membership || membership.teamId !== teamId) {
+        throw new NotFoundError("Member not found in this team");
+      }
+      if (!Array.isArray(assignments)) {
+        throw new BadRequestError("assignments must be an array");
+      }
+      if (assignments.length > 0) {
+        const accountIds = assignments.map((a) => a.adAccountId);
+        const validIds = await repo.ownedAccountIds(accountIds, userId);
+        const invalid = accountIds.find((id) => !validIds.has(id));
+        if (invalid) throw new ForbiddenError(`Ad account ${invalid} does not belong to you`);
+      }
+      return repo.replaceMemberAccounts(memberId, assignments);
+    },
+    async getMemberAccounts(userId: string, teamId: string, memberId: string) {
+      const role = await repo.getMemberRole(teamId, userId);
+      if (role === null) throw new ForbiddenError("Not a team member");
+      return repo.listMemberAccounts(memberId);
+    },
   };
 }
 

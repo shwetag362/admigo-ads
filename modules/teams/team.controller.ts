@@ -90,6 +90,22 @@ export function makeTeamController(service: TeamService) {
       await service.revokeInvite(userId, token);
       return { success: true };
     },
+    async removeMember(session: Session, teamId: string, memberId: string) {
+      const userId = requireUserId(session);
+      await service.removeMember(userId, teamId, memberId);
+      return { success: true };
+    },
+    async setMemberAccounts(session: Session, teamId: string, memberId: string, body: unknown) {
+      const userId = requireUserId(session);
+      const assignments = (body as { assignments?: unknown })?.assignments;
+      const accountAccess = await service.setMemberAccounts(userId, teamId, memberId, assignments);
+      return { accountAccess };
+    },
+    async getMemberAccounts(session: Session, teamId: string, memberId: string) {
+      const userId = requireUserId(session);
+      const accountAccess = await service.getMemberAccounts(userId, teamId, memberId);
+      return { accountAccess };
+    },
   };
 }
 
