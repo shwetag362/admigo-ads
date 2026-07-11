@@ -35,7 +35,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { createInvite, assertTeamRole } from "../../../../../lib/teams";
-import { sendInviteEmail } from "@/lib/email"; // ← add this
+import { sendInviteEmail } from "@/lib/integrations/email"; // ← add this
 
 const VALID_ROLES   = ["member", "viewer"];
 const ALLOWED_ROLES = ["owner"];

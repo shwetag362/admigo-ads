@@ -22,13 +22,7 @@ const eslintConfig = defineConfig([
         { type: "hooks", pattern: "hooks/**" },
         { type: "app", pattern: "app/**" },
       ],
-      // lib/services/* is a legacy service that lives under lib/ (confusing name);
-      // exempt it from element classification until it moves into a module.
-      "boundaries/ignore": [
-        "**/*.test.*",
-        "**/*.spec.*",
-        "lib/services/**",
-      ],
+      "boundaries/ignore": ["**/*.test.*", "**/*.spec.*"],
     },
     rules: {
       "boundaries/element-types": [
