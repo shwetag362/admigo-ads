@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# Large media — host on CDN/LFS, not git
+public/video.mp4
+*.mp4
