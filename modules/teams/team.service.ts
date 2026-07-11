@@ -22,6 +22,13 @@ export function makeTeamService(repo: TeamRepository) {
       if (ownerId !== userId) throw new ForbiddenError("Only the team owner can delete this team");
       await repo.deleteById(teamId);
     },
+    async invite(userId: string, teamId: string, email: string, role: string) {
+      const memberRole = await repo.getMemberRole(teamId, userId);
+      if (memberRole !== "owner") {
+        throw new ForbiddenError("Only the team owner can invite members");
+      }
+      return repo.createInvite(teamId, email, role, userId);
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 // modules/teams/team.repository.prisma.ts — the ADAPTER.
 // The ONLY file in this module that touches Prisma. Implements TeamRepository.
+import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { TeamRepository } from "./team.repository";
 
@@ -78,5 +79,26 @@ export const prismaTeamRepository: TeamRepository = {
       prisma.teamMember.deleteMany({ where: { teamId } }),
       prisma.team.delete({ where: { id: teamId } }),
     ]);
+  },
+
+  async getMemberRole(teamId, userId) {
+    const membership = await prisma.teamMember.findUnique({
+      where: { teamId_userId: { teamId, userId } },
+      select: { role: true },
+    });
+    return membership?.role ?? null;
+  },
+
+  async createInvite(teamId, email, role, invitedBy) {
+    // Cancel any existing pending invite for this email+team, then create fresh.
+    await prisma.teamInvite.deleteMany({ where: { teamId, email, acceptedAt: null } });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    return prisma.teamInvite.create({
+      data: { teamId, email, role, token, invitedBy, expiresAt },
+      include: { team: { select: { name: true } } },
+    });
   },
 };

@@ -6,3 +6,9 @@ export const CreateTeamInput = z.object({
   description: z.string().trim().max(2000).optional(),
 });
 export type CreateTeamInput = z.infer<typeof CreateTeamInput>;
+
+export const CreateInviteInput = z.object({
+  email: z.string().email("Valid email required"),
+  role: z.enum(["member", "viewer"]).default("member"),
+});
+export type CreateInviteInput = z.infer<typeof CreateInviteInput>;

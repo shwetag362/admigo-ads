@@ -9,6 +9,8 @@ function fakeRepo(over: Partial<TeamRepository> = {}): TeamRepository {
     findWithMembers: vi.fn().mockResolvedValue(null),
     getOwnerId: vi.fn().mockResolvedValue(null),
     deleteById: vi.fn().mockResolvedValue(undefined),
+    getMemberRole: vi.fn().mockResolvedValue(null),
+    createInvite: vi.fn().mockResolvedValue({ token: "tok" }),
     ...over,
   };
 }

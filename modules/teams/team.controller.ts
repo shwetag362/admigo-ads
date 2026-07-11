@@ -1,11 +1,14 @@
 // modules/teams/team.controller.ts — the CONTROLLER (interface adapter).
 // Thin: authorize + validate input + call the service + shape the response DTO.
 // No business logic, no Prisma. Reusable by any driver (route handler, server action).
-import { NotFoundError, UnauthorizedError } from "@/lib/errors/AppError";
-import { CreateTeamInput } from "./team.schema";
+import { ConflictError, NotFoundError, UnauthorizedError } from "@/lib/errors/AppError";
+import { sendInviteEmail } from "@/lib/integrations/email";
+import { CreateInviteInput, CreateTeamInput } from "./team.schema";
 import type { TeamService } from "./team.service";
 
-type Session = { user?: { id?: string | null } | null } | null;
+type Session = {
+  user?: { id?: string | null; name?: string | null; email?: string | null } | null;
+} | null;
 
 function requireUserId(session: Session): string {
   const userId = session?.user?.id;
@@ -34,6 +37,42 @@ export function makeTeamController(service: TeamService) {
       const userId = requireUserId(session);
       await service.remove(userId, teamId);
       return { success: true };
+    },
+    async invite(session: Session, teamId: string, body: unknown) {
+      const userId = requireUserId(session);
+      const input = CreateInviteInput.parse(body);
+      const email = input.email.toLowerCase().trim();
+
+      let invite;
+      try {
+        invite = await service.invite(userId, teamId, email, input.role);
+      } catch (e: any) {
+        if (e?.code === "P2002") {
+          throw new ConflictError("An active invite already exists for this email");
+        }
+        throw e;
+      }
+
+      const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${invite.token}`;
+
+      // Email failure must not fail the request — the invite already exists.
+      try {
+        await sendInviteEmail({
+          to: email,
+          inviterName: session?.user?.name || session?.user?.email || "A teammate",
+          teamName: invite.team?.name || "your team",
+          inviteUrl,
+          role: input.role,
+        });
+      } catch {
+        return {
+          invite,
+          inviteUrl,
+          warning: "Invite created but email could not be sent. Share the link manually.",
+        };
+      }
+
+      return { invite, inviteUrl };
     },
   };
 }

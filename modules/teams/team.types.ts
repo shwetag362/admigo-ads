@@ -28,3 +28,16 @@ export interface TeamDetail extends Team {
   members: unknown[];
   invites: unknown[];
 }
+
+export interface TeamInvite {
+  id: string;
+  teamId: string;
+  email: string;
+  role: string;
+  token: string;
+  invitedBy: string;
+  expiresAt: Date;
+  acceptedAt: Date | null;
+  createdAt: Date;
+  team?: { name: string } | null;
+}
