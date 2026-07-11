@@ -1,10 +1,13 @@
-// modules/ads — public API (barrel).
-// Import this module ONLY via this file: `import { ... } from "@/modules/ads"`.
-// Internal layout (see ARCHITECTURE.md):
-//   ads.schema.ts       zod input contracts + inferred types
-//   ads.service.ts      business logic (no HTTP / no Prisma / no Next)
-//   ads.repository.ts   the only file that touches prisma for this domain
-//   ads.jobs.ts         (optional) enqueue background work
-//
-// TODO(Phase 2): migrate the corresponding services/ + app/api handlers here.
-export {};
+// modules/ads — public API (barrel) + composition root.
+import { prismaAdRepository } from "./ad.repository.prisma";
+import { makeAdService } from "./ad.service";
+import { makeAdController } from "./ad.controller";
+
+export const adService = makeAdService(prismaAdRepository);
+export const adController = makeAdController(adService);
+
+export { ListAdsQuery } from "./ad.schema";
+export type { AdRepository } from "./ad.repository";
+export type { AdSummary } from "./ad.types";
+export type { AdService } from "./ad.service";
+export type { AdController } from "./ad.controller";
