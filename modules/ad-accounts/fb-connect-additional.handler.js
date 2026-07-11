@@ -1,6 +1,6 @@
 // app/api/facebook/connect-additional/route.js
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth/options";
 import { NextResponse } from "next/server";
 
 /**

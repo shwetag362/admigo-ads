@@ -1,8 +1,8 @@
 // app/api/facebook/connect-additional/callback/route.js
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth/options";
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Callback handler for connecting ADDITIONAL Facebook accounts
