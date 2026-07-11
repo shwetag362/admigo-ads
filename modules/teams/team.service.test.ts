@@ -6,6 +6,9 @@ function fakeRepo(over: Partial<TeamRepository> = {}): TeamRepository {
   return {
     listMembershipsForUser: vi.fn().mockResolvedValue([]),
     createWithOwner: vi.fn().mockResolvedValue({ id: "t1" }),
+    findWithMembers: vi.fn().mockResolvedValue(null),
+    getOwnerId: vi.fn().mockResolvedValue(null),
+    deleteById: vi.fn().mockResolvedValue(undefined),
     ...over,
   };
 }
@@ -23,5 +26,23 @@ describe("teamService", () => {
     const res = await makeTeamService(repo).create("owner1", { name: "Acme" });
     expect(repo.createWithOwner).toHaveBeenCalledWith("owner1", { name: "Acme" });
     expect(res).toEqual({ id: "t1" });
+  });
+
+  it("remove throws NotFound when the team does not exist", async () => {
+    const repo = fakeRepo({ getOwnerId: vi.fn().mockResolvedValue(null) as any });
+    await expect(makeTeamService(repo).remove("u1", "t1")).rejects.toThrow(/not found/i);
+    expect(repo.deleteById).not.toHaveBeenCalled();
+  });
+
+  it("remove throws Forbidden when the requester is not the owner", async () => {
+    const repo = fakeRepo({ getOwnerId: vi.fn().mockResolvedValue("owner1") as any });
+    await expect(makeTeamService(repo).remove("someone-else", "t1")).rejects.toThrow(/owner/i);
+    expect(repo.deleteById).not.toHaveBeenCalled();
+  });
+
+  it("remove deletes when the requester is the owner", async () => {
+    const repo = fakeRepo({ getOwnerId: vi.fn().mockResolvedValue("owner1") as any });
+    await makeTeamService(repo).remove("owner1", "t1");
+    expect(repo.deleteById).toHaveBeenCalledWith("t1");
   });
 });

@@ -20,3 +20,11 @@ export interface TeamMembership {
     _count: { members: number };
   };
 }
+
+// Full team detail (owner + members + pending invites). Nested member/invite
+// shapes are broad — the client consumes them structurally.
+export interface TeamDetail extends Team {
+  owner: { id: string; name: string | null; email: string; avatarUrl: string | null };
+  members: unknown[];
+  invites: unknown[];
+}
