@@ -12,3 +12,17 @@ export type { PixelRepository } from "./pixel.repository";
 export type { PixelSummary } from "./pixel.types";
 export type { PixelService } from "./pixel.service";
 export type { PixelController } from "./pixel.controller";
+
+// Datasets slice
+import { prismaDatasetRepository } from "./dataset.repository.prisma";
+import { makeDatasetService } from "./dataset.service";
+import { makeDatasetController } from "./dataset.controller";
+
+export const datasetService = makeDatasetService(prismaDatasetRepository);
+export const datasetController = makeDatasetController(datasetService);
+
+export { ListDatasetsQuery } from "./dataset.schema";
+export type { DatasetRepository } from "./dataset.repository";
+export type { DatasetSummary } from "./dataset.types";
+export type { DatasetService } from "./dataset.service";
+export type { DatasetController } from "./dataset.controller";
