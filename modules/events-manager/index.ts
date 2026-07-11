@@ -1,10 +1,14 @@
-// modules/events-manager — public API (barrel).
-// Import this module ONLY via this file: `import { ... } from "@/modules/events-manager"`.
-// Internal layout (see ARCHITECTURE.md):
-//   events-manager.schema.ts       zod input contracts + inferred types
-//   events-manager.service.ts      business logic (no HTTP / no Prisma / no Next)
-//   events-manager.repository.ts   the only file that touches prisma for this domain
-//   events-manager.jobs.ts         (optional) enqueue background work
-//
-// TODO(Phase 2): migrate the corresponding services/ + app/api handlers here.
-export {};
+// modules/events-manager — public API (barrel) + composition root.
+// Pixels read migrated; CAPI/datasets/test-events slices to follow.
+import { prismaPixelRepository } from "./pixel.repository.prisma";
+import { makePixelService } from "./pixel.service";
+import { makePixelController } from "./pixel.controller";
+
+export const pixelService = makePixelService(prismaPixelRepository);
+export const pixelController = makePixelController(pixelService);
+
+export { ListPixelsQuery } from "./pixel.schema";
+export type { PixelRepository } from "./pixel.repository";
+export type { PixelSummary } from "./pixel.types";
+export type { PixelService } from "./pixel.service";
+export type { PixelController } from "./pixel.controller";
