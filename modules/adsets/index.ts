@@ -1,10 +1,13 @@
-// modules/adsets — public API (barrel).
-// Import this module ONLY via this file: `import { ... } from "@/modules/adsets"`.
-// Internal layout (see ARCHITECTURE.md):
-//   adsets.schema.ts       zod input contracts + inferred types
-//   adsets.service.ts      business logic (no HTTP / no Prisma / no Next)
-//   adsets.repository.ts   the only file that touches prisma for this domain
-//   adsets.jobs.ts         (optional) enqueue background work
-//
-// TODO(Phase 2): migrate the corresponding services/ + app/api handlers here.
-export {};
+// modules/adsets — public API (barrel) + composition root.
+import { prismaAdSetRepository } from "./adset.repository.prisma";
+import { makeAdSetService } from "./adset.service";
+import { makeAdSetController } from "./adset.controller";
+
+export const adSetService = makeAdSetService(prismaAdSetRepository);
+export const adSetController = makeAdSetController(adSetService);
+
+export { ListAdSetsQuery } from "./adset.schema";
+export type { AdSetRepository } from "./adset.repository";
+export type { AdSetSummary } from "./adset.types";
+export type { AdSetService } from "./adset.service";
+export type { AdSetController } from "./adset.controller";

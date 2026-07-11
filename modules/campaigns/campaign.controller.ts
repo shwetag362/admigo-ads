@@ -11,9 +11,10 @@ export function makeCampaignController(service: CampaignService) {
       const userId = session?.user?.id;
       if (!userId) throw new UnauthorizedError();
 
+      const status = searchParams.getAll("status");
       const query = ListCampaignsQuery.parse({
         accountId: searchParams.get("accountId") ?? undefined,
-        status: searchParams.getAll("status"),
+        status: status.length ? status : undefined,
         name: searchParams.get("name") ?? undefined,
         limit: searchParams.get("limit") ?? undefined,
       });
