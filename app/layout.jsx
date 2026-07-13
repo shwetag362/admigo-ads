@@ -2,6 +2,7 @@ import { Geist, Geist_Mono, Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import AuthProvider from "./providers/SessionProvider";
+import QueryProvider from "./providers/QueryProvider";
 
 // ── Existing fonts (unchanged) ────────────────────────────────────────────────
 const geistSans = Geist({
@@ -89,7 +90,9 @@ export default function RootLayout({ children }) {
         `}
       >
         <AuthProvider>
+          <QueryProvider>
           {children}
+          </QueryProvider>
           <Toaster
             position="top-center"
             reverseOrder={false}

@@ -1521,6 +1521,8 @@ export function CampaignsTable({ selectedAdAccountId, selectedMetaAccountId, dat
   );
 
   const table = useMaterialReactTable({
+    enableRowVirtualization: true,
+    rowVirtualizerOptions: { overscan: 8 },
     columns,
     // data,
     data: filteredData,

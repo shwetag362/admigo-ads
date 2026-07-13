@@ -1261,6 +1261,8 @@ export function AdSetsTable({ selectedAdAccountId, dateRange, datePreset, syncDa
   );
 
   const table = useMaterialReactTable({
+    enableRowVirtualization: true,
+    rowVirtualizerOptions: { overscan: 8 },
     columns,
     data,
     enableColumnResizing: true,
